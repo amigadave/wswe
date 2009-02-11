@@ -1,0 +1,29 @@
+<ui>
+  <menubar name="MainMenu">
+    <menu name="FileMenu" action="FileMenuAction">
+      <menuitem name="Open" action="OpenAction" />
+      <menuitem name="Save" action="SaveAction" />
+      <separator/>
+      <menuitem name="Quit" action="QuitAction" />
+    </menu>
+    <menu name="GoMenu" action="GoMenuAction">
+      <menuitem name="Add place..." action="AddPlaceAction" />
+      <menuitem name="Delete place" action="DeletePlaceAction" />
+      <separator/>
+      <menuitem name="Choose place" action="ChoosePlaceAction" />
+    </menu>
+    <menu name="HelpMenu" action="HelpMenuAction">
+      <menuitem name="About" action="AboutAction" />
+    </menu>
+  </menubar>
+
+  <toolbar name="MainToolbar" action="MainMenuBarAction">
+    <placeholder name="PlaceToolItems">
+      <separator/>
+      <toolitem name="Add place" action="AddPlaceAction" />
+      <toolitem name="Delete place" action="DeletePlaceAction" />
+      <toolitem name="Choose place" action="ChoosePlaceAction" />
+      <separator/>
+    </placeholder>
+  </toolbar>
+</ui>
