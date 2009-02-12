@@ -48,13 +48,13 @@ typedef struct {
 gchar *get_system_file (const gchar *filename);
 gboolean init_main_window (MainWindowData *data);
 
-static gboolean open_file_action (GtkWidget *widget, gpointer *user_data);
-static gboolean save_file_action (GtkWidget *widget, gpointer *user_data);
-static void quit_file_action (GtkWidget *widget, gpointer *user_data);
-static void add_place_action (GtkWidget *widget, gpointer *user_data);
-static void delete_place_action (GtkWidget *widget, gpointer *user_data);
-static void choose_place_action (GtkWidget *widget, gpointer *user_data);
-static void about_action (GtkWidget *widget, gpointer *user_data);
+static gboolean open_file_action (GtkWidget *widget, MainWindowData *user_data);
+static gboolean save_file_action (GtkWidget *widget, MainWindowData *user_data);
+static void quit_file_action (GtkWidget *widget, MainWindowData *user_data);
+static void add_place_action (GtkWidget *widget, MainWindowData *user_data);
+static void delete_place_action (GtkWidget *widget, MainWindowData *user_data);
+static void choose_place_action (GtkWidget *widget, MainWindowData *user_data);
+static void about_action (GtkWidget *widget, MainWindowData *user_data);
 
 /* A list of entries that is passed to the GtkActionGroup */
 static GtkActionEntry entries[] = 
@@ -162,45 +162,45 @@ gboolean init_main_window (MainWindowData *data)
 }
 
 /* Callback function to open a data file. */
-static gboolean open_file_action (GtkWidget *widget, gpointer *user_data)
+static gboolean open_file_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Open a file");
 
   return TRUE;
 }
 
-static gboolean save_file_action (GtkWidget *widget, gpointer *user_data)
+static gboolean save_file_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Save a file");
 
   return TRUE;
 }
 
-static void quit_file_action (GtkWidget *widget, gpointer *user_data)
+static void quit_file_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Quit program");
 
   gtk_main_quit ();
 }
 
-static void add_place_action (GtkWidget *widget, gpointer *user_data)
+static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Add an eating place");
 }
 
-static void delete_place_action (GtkWidget *widget, gpointer *user_data)
+static void delete_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Delete an eating place");
 }
 
-static void choose_place_action (GtkWidget *widget, gpointer *user_data)
+static void choose_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Choose an eating place");
 }
 
-static void about_action (GtkWidget *widget, gpointer *user_data)
+static void about_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  g_debug ("About WSWE");
+  gtk_show_about_dialog (GTK_WINDOW (user_data->window), "program-name", PACKAGE_NAME, "version", PACKAGE_VERSION, "comments", "A GTK+ application to randomly select a place to eat.", "license", "IMP is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nIMP is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with IMP.  If not, see <http://www.gnu.org/licenses/>.", "wrap-license", TRUE, "copyright", "Copyright 2009 David King", NULL);
 }
 
 /* Main function to allocate memory for typedef'd struct and start GTK+ main
