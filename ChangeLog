@@ -1,11 +1,24 @@
 2009-02-12  David King  <davidk@openismus.com>
 
+	* src/wswe.c MainWindowData: Remove several unnecessary variables from
+	typedef'd struct.
+	  entries: Fix incorrect shortcuts for GtkActionEntry array.
+	  (get_system_file): Make static.
+	  (init_main_window): Move variables here from MainWindowData. Perform
+	  treeview and scrolled window setup.
+	  (price_cell_data_func): Add GtkTreeCellDataFunction to display a
+	  float as a currency.
+	  (add_place_action): Add callback function to add an eating place.
+	  (about_action): Fix license.
+
+2009-02-12  David King  <davidk@openismus.com>
+
 	* autogen.sh: Add autogen script, as suggested by Michael.
 	* configure.ac: Fix AC_CONFIG_SRCDIR as pointed out by Michael.
 	* src/wswe.c (open_file_action, save_file_action, quit_file_action,
 	  add_place_action, delete_place_action, choose_place_action): Change
 	  user_data pointer from gpointer to MainWindowData pointer.
-	(about_action): Add about dialog. Change user_data pointer as above.
+	  (about_action): Add about dialog. Change user_data pointer as above.
 
 2009-02-11  David King  <davidk@openismus.com>
 
