@@ -307,6 +307,7 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
         if (g_ascii_strcasecmp (name, name_model) == 0)
         {
           g_free (name_model);
+          gtk_widget_destroy (dialog);
           g_debug ("Name already exists in model.");
           return;
         }
