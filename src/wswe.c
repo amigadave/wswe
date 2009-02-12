@@ -41,6 +41,7 @@ typedef struct {
 static gchar *get_system_file (const gchar *filename);
 static gboolean init_main_window (MainWindowData *data);
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data);
+static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model);
 
 /* Callbacks for menu and toolbar. */
 static gboolean open_file_action (GtkWidget *widget, MainWindowData *user_data);
@@ -51,7 +52,7 @@ static void delete_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void choose_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void about_action (GtkWidget *widget, MainWindowData *user_data);
 
-/* A list of entries that is passed to the GtkActionGroup */
+/* A list of entries that is passed to the GtkActionGroup. */
 static GtkActionEntry entries[] = 
 {
   { "FileMenuAction", NULL, "_File" },
@@ -116,16 +117,17 @@ static gboolean init_main_window (MainWindowData *data)
   GtkTreeViewColumn *price_column;
   GtkTreeViewColumn *quality_column;
   GtkTreeViewColumn *visits_column;
+  GtkTreeSelection *selection;
 
-  /* Create a new GtkActionGroup and add entries */
+  /* Create a new GtkActionGroup and add entries. */
   action_group = gtk_action_group_new ("MainWindowActions");
   gtk_action_group_add_actions (action_group, entries, n_entries, data);
 
-  /* Add action_group to ui_manager */
+  /* Add action_group to ui_manager. */
   ui_manager = gtk_ui_manager_new ();
   gtk_ui_manager_insert_action_group (ui_manager, action_group, 0);
 
-  /* Load GtkUIManager description from file */
+  /* Load GtkUIManager description from file. */
   if ( !(gtk_ui_manager_add_ui_from_file (ui_manager, get_system_file (WSWE_MAINWINDOW_UI), &ui_error)))
   {
     g_printerr ("Error loading GtkUIManager file: %s", ui_error->message);
@@ -151,8 +153,10 @@ static gboolean init_main_window (MainWindowData *data)
   gtk_tree_view_insert_column_with_data_func (GTK_TREE_VIEW (data->treeview), VISITS_COLUMN, "Price", text_renderer, price_cell_data_func, data, NULL);
   quality_column = gtk_tree_view_column_new_with_attributes ("Quality", text_renderer, "text", QUALITY_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), quality_column, QUALITY_COLUMN);
-  visits_column = gtk_tree_view_column_new_with_attributes ("Visits", text_renderer, "text", PRICE_COLUMN, NULL);
+  visits_column = gtk_tree_view_column_new_with_attributes ("Visits", text_renderer, "text", VISITS_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), visits_column, VISITS_COLUMN);
+  selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (data->treeview));
+  gtk_tree_selection_set_mode (selection, GTK_SELECTION_MULTIPLE);
 
   /* Setup scrolled window for treeview. */
   scrollwin = gtk_scrolled_window_new (NULL, NULL);
@@ -198,6 +202,18 @@ static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *rende
   g_snprintf (buffer, sizeof(buffer), "EUR%.2f", price);
 
   g_object_set (renderer, "text", buffer, NULL);
+}
+
+/* Function to remove a row from a model using a TreeRowReference. */
+static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model)
+{
+  GtkTreeIter iter = { 0, };
+  GtkTreePath *path;
+
+  /* Convert reference to path, then to iter. Then, remove iter from store. */
+  path = gtk_tree_row_reference_get_path (ref);
+  gtk_tree_model_get_iter (model, &iter, path);
+  gtk_tree_store_remove (GTK_TREE_STORE (model), &iter);
 }
 
 /* Callback function to open a data file. */
@@ -279,7 +295,7 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
   gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox), table, TRUE, FALSE, 0);
   gtk_widget_show_all (dialog);
 
-  /* Run dialog and check for valid response */
+  /* Run dialog and check for valid response. */
   if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK)
   {
     name = gtk_entry_get_text (GTK_ENTRY (entry));
@@ -328,10 +344,38 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 /* Callback function to delete an eating place. */
 static void delete_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  g_debug ("Delete an eating place");
+  GtkTreeSelection *selection;
+  GtkTreeRowReference *ref;
+  GtkTreeModel *model;
+  GList *rows = NULL;
+  GList *path_to_ref = NULL;
+  GList *treerowref = NULL;
+
+  selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (user_data->treeview));
+  model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
+  rows = gtk_tree_selection_get_selected_rows (selection, &model);
+
+  /* Create GtkTreeRowReference for each of the selected rows. */
+  path_to_ref = rows;
+  while (path_to_ref != NULL)
+  {
+    ref = gtk_tree_row_reference_new (model, (GtkTreePath*) path_to_ref->data);
+    treerowref = g_list_prepend (treerowref, gtk_tree_row_reference_copy (ref));
+    gtk_tree_row_reference_free (ref);
+    path_to_ref = path_to_ref->next;
+  }
+
+  /* Remove selected rows from model. */
+  g_list_foreach (treerowref, (GFunc) remove_row, model);
+
+  /* Free treerowref, paths and lists. */
+  g_list_foreach (treerowref, (GFunc) gtk_tree_row_reference_free, NULL);
+  g_list_foreach (rows, (GFunc) gtk_tree_path_free, NULL);
+  g_list_free (treerowref);
+  g_list_free (rows);
 }
 
-/* Callback function to randomly select an eating place */
+/* Callback function to randomly select an eating place. */
 static void choose_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
   g_debug ("Choose an eating place");
@@ -345,7 +389,7 @@ static void about_action (GtkWidget *widget, MainWindowData *user_data)
 }
 
 /* Main function to allocate memory for typedef'd struct and start GTK+ main
- * loop */
+ * loop. */
 int main (int argc, char *argv[])
 {
   MainWindowData *data;

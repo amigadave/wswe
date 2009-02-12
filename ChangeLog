@@ -1,5 +1,19 @@
 2009-02-12  David King  <davidk@openismus.com>
 
+	* ChangeLog: Missed ChangeLog entry from last commit.
+	* src/wswe.c (init_main_window: Allow multiple selections in treeview.
+	Fix incorrect setup of Visits column in treeview.
+	  (remove_row): Add function to remove rows from the treeview.
+	  (delete_place_action): Get selected rows as TreeRowReference and
+	  pass them to remove_row() to delete rows from treeview.
+
+2009-02-12  David King  <davidk@openismus.com>
+
+	* src/wswe.c (add_place_action): One-line fix to destroy dialog if
+	duplicate addition of place is attempted.
+
+2009-02-12  David King  <davidk@openismus.com>
+
 	* src/wswe.c MainWindowData: Remove several unnecessary variables from
 	typedef'd struct.
 	  entries: Fix incorrect shortcuts for GtkActionEntry array.
