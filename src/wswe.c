@@ -48,7 +48,9 @@ static gboolean open_file_action (GtkWidget *widget, MainWindowData *user_data);
 static gboolean save_file_action (GtkWidget *widget, MainWindowData *user_data);
 static void quit_file_action (GtkWidget *widget, MainWindowData *user_data);
 static void add_place_action (GtkWidget *widget, MainWindowData *user_data);
-static void delete_place_action (GtkWidget *widget, MainWindowData *user_data);
+static void remove_place_action (GtkWidget *widget, MainWindowData *user_data);
+static void add_visit_action (GtkWidget *widget, MainWindowData *user_data);
+static void remove_visit_action (GtkWidget *widget, MainWindowData *user_data);
 static void choose_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void about_action (GtkWidget *widget, MainWindowData *user_data);
 
@@ -64,7 +66,9 @@ static GtkActionEntry entries[] =
   { "QuitAction", GTK_STOCK_QUIT, "_Quit", "<control>Q", "Quit", G_CALLBACK (quit_file_action) },
 
   { "AddPlaceAction", GTK_STOCK_ADD, "_Add place...", "<control>A", "Add an eating place", G_CALLBACK (add_place_action) },
-  { "DeletePlaceAction", GTK_STOCK_DELETE, "_Delete place", "<control>D", "Delete an eating place", G_CALLBACK (delete_place_action) },
+  { "RemovePlaceAction", GTK_STOCK_REMOVE, "_Remove place", "<control>R", "Remove an eating place", G_CALLBACK (remove_place_action) },
+  { "AddVisitAction", GTK_STOCK_ADD, "Add _visit...", "<control>I", "Add a visit to an eating place", G_CALLBACK (add_visit_action) },
+  { "RemoveVisitAction", GTK_STOCK_REMOVE, "R_emove visit", "<control>E", "Remove a visit to an eating place", G_CALLBACK (remove_visit_action) },
   { "ChoosePlaceAction", GTK_STOCK_EXECUTE, "_Choose place", "<control>H", "Choose an eating place", G_CALLBACK (choose_place_action) },
 
   { "AboutAction", GTK_STOCK_ABOUT, "A_bout", "<control>B", "About " PACKAGE_NAME, G_CALLBACK (about_action) }
@@ -199,9 +203,16 @@ static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *rende
 
   gtk_tree_model_get (model, iter, PRICE_COLUMN, &price, -1);
 
-  g_snprintf (buffer, sizeof(buffer), "EUR%.2f", price);
+  if (price > 0)
+  {
+    g_snprintf (buffer, sizeof(buffer), "EUR%.2f", price);
+    g_object_set (renderer, "text", buffer, NULL);
+  }
+  else
+  {
+    g_object_set (renderer, "text", "", NULL);
+  }
 
-  g_object_set (renderer, "text", buffer, NULL);
 }
 
 /* Function to remove a row from a model using a TreeRowReference. */
@@ -214,6 +225,7 @@ static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model)
   path = gtk_tree_row_reference_get_path (ref);
   gtk_tree_model_get_iter (model, &iter, path);
   gtk_tree_store_remove (GTK_TREE_STORE (model), &iter);
+  gtk_tree_path_free (path);
 }
 
 /* Callback function to open a data file. */
@@ -261,6 +273,8 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
   /* Setup entry field for name. */
   entry = gtk_entry_new ();
   gtk_widget_set_tooltip_text (entry, "Name of eating place");
+  gtk_entry_set_activates_default (GTK_ENTRY (entry), TRUE);
+  gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
 
   /* Setup ComboBoxEntryText with list of styles. Default to first item. */
   combobox = gtk_combo_box_new_text ();
@@ -342,7 +356,7 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 }
 
 /* Callback function to delete an eating place. */
-static void delete_place_action (GtkWidget *widget, MainWindowData *user_data)
+static void remove_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
   GtkTreeSelection *selection;
   GtkTreeRowReference *ref;
@@ -375,6 +389,18 @@ static void delete_place_action (GtkWidget *widget, MainWindowData *user_data)
   g_list_free (rows);
 }
 
+/* Callback function to add a visit to an eating place to the treestore. */
+static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
+{
+  g_debug ("Add a visit to an eating place");
+}
+
+/* Callback function to remove a visit to an eating place from the treestore. */
+static void remove_visit_action (GtkWidget *widget, MainWindowData *user_data)
+{
+  g_debug ("Remove a visit to an eating place");
+}
+
 /* Callback function to randomly select an eating place. */
 static void choose_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
@@ -385,7 +411,7 @@ static void choose_place_action (GtkWidget *widget, MainWindowData *user_data)
  * is clicked, keeping it in memory for future invocation. */
 static void about_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  gtk_show_about_dialog (GTK_WINDOW (user_data->window), "program-name", PACKAGE_NAME, "version", PACKAGE_VERSION, "comments", "A GTK+ application to randomly select a place to eat.", "license", "Where Shall We Eat is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nWhere Shall We Eat is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with Where Shall We Eat.  If not, see <http://www.gnu.org/licenses/>.", "wrap-license", TRUE, "copyright", "Copyright 2009 David King", NULL);
+  gtk_show_about_dialog (GTK_WINDOW (user_data->window), "program-name", PACKAGE_NAME, "version", PACKAGE_VERSION, "comments", "A GTK+ application to randomly select a place to eat.", "license", "Where Shall We Eat is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nWhere Shall We Eat is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with Where Shall We Eat.  If not, see <http://www.gnu.org/licenses/>.", "wrap-license", TRUE, "copyright", "Copyright © 2009 David King", NULL);
 }
 
 /* Main function to allocate memory for typedef'd struct and start GTK+ main

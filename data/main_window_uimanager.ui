@@ -8,7 +8,10 @@
     </menu>
     <menu name="GoMenu" action="GoMenuAction">
       <menuitem name="Add place..." action="AddPlaceAction" />
-      <menuitem name="Delete place" action="DeletePlaceAction" />
+      <menuitem name="Remove place" action="RemovePlaceAction" />
+      <separator/>
+      <menuitem name="Add visit..." action="AddVisitAction" />
+      <menuitem name="Remove visit" action="RemoveVisitAction" />
       <separator/>
       <menuitem name="Choose place" action="ChoosePlaceAction" />
     </menu>
@@ -21,7 +24,11 @@
     <placeholder name="PlaceToolItems">
       <separator/>
       <toolitem name="Add place" action="AddPlaceAction" />
-      <toolitem name="Delete place" action="DeletePlaceAction" />
+      <toolitem name="Remove place" action="RemovePlaceAction" />
+      <separator/>
+      <toolitem name="Add visit" action="AddVisitAction" />
+      <toolitem name="Remove visit" action="RemoveVisitAction" />
+      <separator/>
       <toolitem name="Choose place" action="ChoosePlaceAction" />
       <separator/>
     </placeholder>

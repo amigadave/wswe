@@ -1,3 +1,18 @@
+2009-02-13  David King  <davidk@openismus.com>
+
+	* data/main_window_uimanager.ui: Add menu and toolbar items to add and
+	remove visits. Rename delete* to remove*.
+	* src/wswe.c entries: Add new actions for addition and removal of
+	visits.
+	(price_cell_data_func): If price is zero, don't display anything in
+	the treeview.
+	(remove_row): Remember to free the TreePath, pointed out by Murray.
+	(add_place_action): Make pressing Enter in the entry field activate
+	the Add button in the dialog.
+	(remove_place_action): Rename delete* to remove*.
+	(add_visit_action, remove_visit_action): Stubs for adding and removing
+	visits to an eating place.
+
 2009-02-12  David King  <davidk@openismus.com>
 
 	* ChangeLog: Missed ChangeLog entry from last commit.
