@@ -22,7 +22,8 @@
 #define WSWE_MAINWINDOW_UI "main_window_uimanager.ui"
 
 /* Columns in model for tree view. */
-enum {
+enum
+{
   NAME_COLUMN,
   STYLE_COLUMN,
   PRICE_COLUMN,
@@ -32,7 +33,8 @@ enum {
 };
 
 /* Variables that need to be accessed across several functions. */
-typedef struct {
+typedef struct
+{
   GtkWidget *window;
   GtkWidget *treeview;
 } MainWindowData;
@@ -55,7 +57,7 @@ static void choose_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void about_action (GtkWidget *widget, MainWindowData *user_data);
 
 /* A list of entries that is passed to the GtkActionGroup. */
-static GtkActionEntry entries[] = 
+static const GtkActionEntry entries[] = 
 {
   { "FileMenuAction", NULL, "_File" },
   { "GoMenuAction", NULL, "_Go" },
@@ -74,27 +76,21 @@ static GtkActionEntry entries[] =
   { "AboutAction", GTK_STOCK_ABOUT, "A_bout", "<control>B", "About " PACKAGE_NAME, G_CALLBACK (about_action) }
 };
 
-/* Use G_N_ELEMENTS to count the number of elements in an array. */
-static guint n_entries = G_N_ELEMENTS (entries);
-
 /* Function to get a system file, e.g. a UI description. */
 static gchar *get_system_file (const gchar *filename)
 {
-  const gchar *directory;
   gchar *pathname;
   const gchar* const *system_data_dirs;
-  gboolean file_exists = FALSE;
-  gint i = 0;
-
-  system_data_dirs = g_get_system_data_dirs ();
 
   /* Iterate over array of strings to find system data files. */
-  for (i = 0, file_exists = FALSE; !file_exists && (directory = system_data_dirs[i]) != NULL; i++)
+  for (system_data_dirs = g_get_system_data_dirs (); system_data_dirs != NULL; system_data_dirs++)
   {
-    pathname = g_build_filename (directory, PACKAGE_TARNAME, filename, NULL);
-    file_exists = g_file_test (pathname, G_FILE_TEST_EXISTS);
-    g_debug ("File %s exists: %s", pathname, file_exists ? "Yes" : "No");
-    if (!file_exists)
+    pathname = g_build_filename (*system_data_dirs, PACKAGE_TARNAME, filename, NULL);
+    if (g_file_test (pathname, G_FILE_TEST_EXISTS))
+    {
+      break;
+    }
+    else
     {
       g_free (pathname);
       pathname = NULL;
@@ -107,8 +103,8 @@ static gchar *get_system_file (const gchar *filename)
 /* Function to initialise main window and child widgets. */
 static gboolean init_main_window (MainWindowData *data)
 {
-  GtkActionGroup *action_group = { 0, };
-  GtkUIManager *ui_manager = { 0, };
+  GtkActionGroup *action_group;
+  GtkUIManager *ui_manager;
   GError *ui_error = NULL;
   GtkWidget *menubar;
   GtkWidget *toolbar;
@@ -126,7 +122,7 @@ static gboolean init_main_window (MainWindowData *data)
 
   /* Create a new GtkActionGroup and add entries. */
   action_group = gtk_action_group_new ("MainWindowActions");
-  gtk_action_group_add_actions (action_group, entries, n_entries, data);
+  gtk_action_group_add_actions (action_group, entries, G_N_ELEMENTS (entries), data);
 
   /* Add action_group to ui_manager. */
   ui_manager = gtk_ui_manager_new ();
@@ -150,15 +146,18 @@ static gboolean init_main_window (MainWindowData *data)
   data->treeview = gtk_tree_view_new_with_model (GTK_TREE_MODEL (treestore));
   g_object_unref (treestore);
   text_renderer = gtk_cell_renderer_text_new ();
-  progress_renderer = gtk_cell_renderer_progress_new ();
   name_column = gtk_tree_view_column_new_with_attributes ("Name", text_renderer, "text", NAME_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), name_column, NAME_COLUMN);
+  text_renderer = gtk_cell_renderer_text_new ();
   style_column = gtk_tree_view_column_new_with_attributes ("Style", text_renderer, "text", STYLE_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), style_column, STYLE_COLUMN);
+  text_renderer = gtk_cell_renderer_text_new ();
   price_column = gtk_tree_view_column_new ();
   gtk_tree_view_insert_column_with_data_func (GTK_TREE_VIEW (data->treeview), VISITS_COLUMN, "Price", text_renderer, price_cell_data_func, data, NULL);
+  progress_renderer = gtk_cell_renderer_progress_new ();
   quality_column = gtk_tree_view_column_new_with_attributes ("Quality", progress_renderer, "value", QUALITY_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), quality_column, QUALITY_COLUMN);
+  text_renderer = gtk_cell_renderer_text_new ();
   visits_column = gtk_tree_view_column_new_with_attributes ("Visits", text_renderer, "text", VISITS_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), visits_column, VISITS_COLUMN);
   selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (data->treeview));
@@ -178,9 +177,7 @@ static gboolean init_main_window (MainWindowData *data)
   /* Window setup. */
   data->window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title (GTK_WINDOW (data->window), PACKAGE_STRING);
-  g_set_application_name (PACKAGE_NAME);
   gtk_window_set_default_size (GTK_WINDOW (data->window), 350, 250);
-  gtk_window_set_default_icon_name (PACKAGE_TARNAME);
   gtk_window_add_accel_group (GTK_WINDOW (data->window), gtk_ui_manager_get_accel_group (ui_manager));
 
   /* Unref ui_manager as no longer needed. */
@@ -201,14 +198,15 @@ static gboolean init_main_window (MainWindowData *data)
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data)
 {
   gfloat price;
-  gchar buffer[10]; /* EURxxx.xx\0 */
+  gchar *price_string; /* EURxxx.xx\0 */
 
   gtk_tree_model_get (model, iter, PRICE_COLUMN, &price, -1);
 
   if (price > 0)
   {
-    g_snprintf (buffer, sizeof(buffer), "EUR%.2f", price);
-    g_object_set (renderer, "text", buffer, NULL);
+    price_string = g_strdup_printf ("EUR%.2f", price);
+    g_object_set (renderer, "text", price_string, NULL);
+    g_free (price_string);
   }
   else
   {
@@ -308,7 +306,7 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 
   /* Pack table into dialog's vbox. GTK_DIALOG cast needed as GtkWidget does
    * not have a member "vbox". */
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox), table, TRUE, FALSE, 0);
+  gtk_box_pack_start ( GTK_BOX (gtk_dialog_get_content_area (GTK_DIALOG (dialog))), table, TRUE, FALSE, 0);
   gtk_widget_show_all (dialog);
 
   /* Run dialog and check for valid response. */
@@ -317,8 +315,7 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
     name = gtk_entry_get_text (GTK_ENTRY (entry));
     style = gtk_combo_box_get_active_text (GTK_COMBO_BOX (combobox));
 
-    /* g_ascii_strcasecmp returns 0 (FALSE) on strings matching. */
-    if (g_ascii_strcasecmp (name, "") == 0)
+    if (name[0] == '\0')
     {
       g_debug ("Empty place name");
       gtk_widget_destroy (dialog);
@@ -329,7 +326,7 @@ static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 
     /* Check model for eating place that already exists. */
     model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
-    if (gtk_tree_model_get_iter_from_string (model, &iter, "0"))
+    if (gtk_tree_model_get_iter_first (model, &iter))
     {
 
       do
@@ -378,10 +375,16 @@ static void remove_place_action (GtkWidget *widget, MainWindowData *user_data)
   while (no_children != NULL)
   {
     /* Only remove if depth > 0. */
-    if (gtk_tree_path_get_depth ( (GtkTreePath*) no_children->data) > 0)
+    if (gtk_tree_path_get_depth ( (GtkTreePath*) no_children->data) > 1)
     {
+      gtk_tree_path_free (no_children->data);
       no_children = g_list_remove (no_children, no_children->data);
+      if (no_children != NULL)
+      {
+        no_children = no_children->next;
+      }
     }
+
     no_children = no_children->next;
   }
 
@@ -517,7 +520,22 @@ static void choose_place_action (GtkWidget *widget, MainWindowData *user_data)
  * is clicked, keeping it in memory for future invocation. */
 static void about_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  gtk_show_about_dialog (GTK_WINDOW (user_data->window), "program-name", PACKAGE_NAME, "version", PACKAGE_VERSION, "comments", "A GTK+ application to randomly select a place to eat.", "license", "Where Shall We Eat is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nWhere Shall We Eat is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License along with Where Shall We Eat.  If not, see <http://www.gnu.org/licenses/>.", "wrap-license", TRUE, "copyright", "Copyright © 2009 David King", NULL);
+  gtk_show_about_dialog (GTK_WINDOW (user_data->window),
+      "program-name", PACKAGE_NAME,
+      "version", PACKAGE_VERSION,
+      "comments", "A GTK+ application to randomly select a place to eat.",
+      "license", "Where Shall We Eat is free software: "
+      "you can redistribute it and/or modify it under the terms of the "
+      "GNU General Public License as published by the Free Software "
+      "Foundation, either version 3 of the License, or (at your option) "
+      "any later version.\n\nWhere Shall We Eat is distributed in the hope "
+      "that it will be useful, but WITHOUT ANY WARRANTY; without even the "
+      "implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR "
+      "PURPOSE. See the GNU General Public License for more details.\n\n"
+      "You should have received a copy of the GNU General Public License "
+      "along with Where Shall We Eat. If not, see "
+      "<http://www.gnu.org/licenses/>.",
+      "wrap-license", TRUE, "copyright", "Copyright © 2009 David King", NULL);
 }
 
 /* Main function to allocate memory for typedef'd struct and start GTK+ main
@@ -526,7 +544,10 @@ int main (int argc, char *argv[])
 {
   MainWindowData *data;
 
+  /* GTK+ initialisation. */
+  g_set_application_name (PACKAGE_NAME);
   gtk_init (&argc, &argv);
+  gtk_window_set_default_icon_name (PACKAGE_TARNAME);
 
   data = g_slice_new (MainWindowData);
   if (! (init_main_window (data)))

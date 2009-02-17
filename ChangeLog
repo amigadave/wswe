@@ -1,5 +1,24 @@
 2009-02-17  David King  <davidk@openismus.com>
 
+	* src/wswe.c entries: Make const.
+	  (get_system_file): Implement using pointer arithmetic, making it a
+	lot cleaner.
+	  (init_main_window): Stop initialising pointers to { 0, }. Use
+	G_N_ENTRIES macro to determine length of const entries array at
+	compile time. Initialise text cell renderers before they are used.
+	Move g_set_application_name() and gtk_window_set_default_icon_name()
+	calls to main().
+	  (price_cell_data_func): Use g_strdup_printf() rather than
+	g_snprintf().
+	  (add_place_action): Use gtk_dialog_get_content_area() rather than
+	getting the vbox from the GtkDialog private struct. Don't use
+	g_ascii_strcasecmp() when it's not needed.
+	  (remove_place_action): Still seglfaults.
+	  (about_action): Make license more readable (break at end of lines).
+	  (main): Add function calls removed from init_main_window().
+
+2009-02-17  David King  <davidk@openismus.com>
+
 	* src/wswe.c (init_main_window): Change Quality column in treeview to
 	a ProgressBar renderer, for a percentage quality level.
 	  (remove_place_action): Attempt to only remove toplevel items from
