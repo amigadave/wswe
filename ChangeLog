@@ -1,16 +1,25 @@
+2009-02-17  David King  <davidk@openismus.com>
+
+	* src/wswe.c (init_main_window): Change Quality column in treeview to
+	a ProgressBar renderer, for a percentage quality level.
+	  (remove_place_action): Attempt to only remove toplevel items from
+	the treestore. Segfaults; need to read up on list handling.
+	  (add_visit_action): Adds visits to eating places. ComboBox needs
+	fixing to only display toplevel items from the treestore.
+
 2009-02-13  David King  <davidk@openismus.com>
 
 	* data/main_window_uimanager.ui: Add menu and toolbar items to add and
 	remove visits. Rename delete* to remove*.
 	* src/wswe.c entries: Add new actions for addition and removal of
 	visits.
-	(price_cell_data_func): If price is zero, don't display anything in
+	  (price_cell_data_func): If price is zero, don't display anything in
 	the treeview.
-	(remove_row): Remember to free the TreePath, pointed out by Murray.
-	(add_place_action): Make pressing Enter in the entry field activate
+	  (remove_row): Remember to free the TreePath, pointed out by Murray.
+	  (add_place_action): Make pressing Enter in the entry field activate
 	the Add button in the dialog.
-	(remove_place_action): Rename delete* to remove*.
-	(add_visit_action, remove_visit_action): Stubs for adding and removing
+	  (remove_place_action): Rename delete* to remove*.
+	  (add_visit_action, remove_visit_action): Stubs for adding and removing
 	visits to an eating place.
 
 2009-02-12  David King  <davidk@openismus.com>
@@ -20,7 +29,7 @@
 	Fix incorrect setup of Visits column in treeview.
 	  (remove_row): Add function to remove rows from the treeview.
 	  (delete_place_action): Get selected rows as TreeRowReference and
-	  pass them to remove_row() to delete rows from treeview.
+	pass them to remove_row() to delete rows from treeview.
 
 2009-02-12  David King  <davidk@openismus.com>
 

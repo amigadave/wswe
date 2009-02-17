@@ -113,6 +113,7 @@ static gboolean init_main_window (MainWindowData *data)
   GtkWidget *menubar;
   GtkWidget *toolbar;
   GtkCellRenderer *text_renderer;
+  GtkCellRenderer *progress_renderer;
   GtkWidget *scrollwin;
   GtkWidget *vbox;
   GtkTreeStore *treestore;
@@ -149,13 +150,14 @@ static gboolean init_main_window (MainWindowData *data)
   data->treeview = gtk_tree_view_new_with_model (GTK_TREE_MODEL (treestore));
   g_object_unref (treestore);
   text_renderer = gtk_cell_renderer_text_new ();
+  progress_renderer = gtk_cell_renderer_progress_new ();
   name_column = gtk_tree_view_column_new_with_attributes ("Name", text_renderer, "text", NAME_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), name_column, NAME_COLUMN);
   style_column = gtk_tree_view_column_new_with_attributes ("Style", text_renderer, "text", STYLE_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), style_column, STYLE_COLUMN);
   price_column = gtk_tree_view_column_new ();
   gtk_tree_view_insert_column_with_data_func (GTK_TREE_VIEW (data->treeview), VISITS_COLUMN, "Price", text_renderer, price_cell_data_func, data, NULL);
-  quality_column = gtk_tree_view_column_new_with_attributes ("Quality", text_renderer, "text", QUALITY_COLUMN, NULL);
+  quality_column = gtk_tree_view_column_new_with_attributes ("Quality", progress_renderer, "value", QUALITY_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), quality_column, QUALITY_COLUMN);
   visits_column = gtk_tree_view_column_new_with_attributes ("Visits", text_renderer, "text", VISITS_COLUMN, NULL);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), visits_column, VISITS_COLUMN);
@@ -362,12 +364,26 @@ static void remove_place_action (GtkWidget *widget, MainWindowData *user_data)
   GtkTreeRowReference *ref;
   GtkTreeModel *model;
   GList *rows = NULL;
+  GList *no_children = NULL;
   GList *path_to_ref = NULL;
   GList *treerowref = NULL;
 
+  /* Get GList of selected rows from treeview. */
   selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (user_data->treeview));
   model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
   rows = gtk_tree_selection_get_selected_rows (selection, &model);
+
+  /* Remove child paths (visits) from list. */
+  no_children = rows;
+  while (no_children != NULL)
+  {
+    /* Only remove if depth > 0. */
+    if (gtk_tree_path_get_depth ( (GtkTreePath*) no_children->data) > 0)
+    {
+      no_children = g_list_remove (no_children, no_children->data);
+    }
+    no_children = no_children->next;
+  }
 
   /* Create GtkTreeRowReference for each of the selected rows. */
   path_to_ref = rows;
@@ -392,7 +408,97 @@ static void remove_place_action (GtkWidget *widget, MainWindowData *user_data)
 /* Callback function to add a visit to an eating place to the treestore. */
 static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  g_debug ("Add a visit to an eating place");
+  GtkWidget *dialog;
+  GtkWidget *table;
+  GtkWidget *combo_name;
+  GtkCellRenderer *text_renderer;
+  GtkWidget *spinbutton_price;
+  GtkWidget *spinbutton_quality;
+  GtkWidget *label_name;
+  GtkWidget *label_price;
+  GtkWidget *label_quality;
+  gdouble price = 0.0;
+  gdouble quality = 0.0;
+  GtkTreeModel *model;
+  GtkTreeIter iter = { 0, };
+  GtkTreeIter child = { 0, };
+  GtkTreePath *path;
+
+  /* Create a new dialog, with stock buttons ans responses. */
+  dialog = gtk_dialog_new_with_buttons ("Add a visit to an eating place", GTK_WINDOW (user_data->window), GTK_DIALOG_MODAL, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_ADD, GTK_RESPONSE_OK, NULL);
+  gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
+
+  /* Setup ComboBox to select names from model. */
+  model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
+  combo_name = gtk_combo_box_new_with_model (model);
+  text_renderer = gtk_cell_renderer_text_new ();
+  gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (combo_name), text_renderer, FALSE);
+  gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (combo_name), text_renderer, "text", NAME_COLUMN, NULL);
+  gtk_combo_box_set_active (GTK_COMBO_BOX (combo_name), 0);
+
+  /* Setup spinbuttons for price and quality. */
+  spinbutton_price = gtk_spin_button_new_with_range (0.0, 100.0, 0.01);
+  gtk_widget_set_tooltip_text (spinbutton_price, "Price of meal at eating place");
+  spinbutton_quality = gtk_spin_button_new_with_range (0.0, 5.0, 1.0);
+  gtk_widget_set_tooltip_text (spinbutton_quality, "Quality of visit to eating place");
+
+  /* Setup labels, with mnemonics and tooltips. */
+  label_name = gtk_label_new_with_mnemonic ("_Name");
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label_name), combo_name);
+  gtk_misc_set_alignment (GTK_MISC (label_name), 0, 0.5);
+  label_price = gtk_label_new_with_mnemonic ("_Price");
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label_price), spinbutton_price);
+  gtk_misc_set_alignment (GTK_MISC (label_price), 0, 0.5);
+  label_quality = gtk_label_new_with_mnemonic ("_Quality");
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label_quality), spinbutton_quality);
+  gtk_misc_set_alignment (GTK_MISC (label_quality), 0, 0.5);
+
+  /* Setup and pack table with widgets. */
+  table = gtk_table_new (2, 3, FALSE);
+  gtk_table_set_row_spacings (GTK_TABLE (table), 6);
+  gtk_table_set_col_spacings (GTK_TABLE (table), 6);
+  gtk_container_set_border_width (GTK_CONTAINER (table), 6);
+  gtk_table_attach_defaults (GTK_TABLE (table), label_name, 0, 1, 0, 1);
+  gtk_table_attach_defaults (GTK_TABLE (table), label_price, 0, 1, 1, 2);
+  gtk_table_attach_defaults (GTK_TABLE (table), label_quality, 0, 1, 2, 3);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_name, 1, 2, 0, 1);
+  gtk_table_attach_defaults (GTK_TABLE (table), spinbutton_price, 1, 2, 1, 2);
+  gtk_table_attach_defaults (GTK_TABLE (table), spinbutton_quality, 1, 2, 2, 3);
+
+  /* Pack table into dialog's vbox. GTK_DIALOG cast needed as GtkWidget does
+   * not have a member "vbox". */
+  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox), table, TRUE, FALSE, 0);
+  gtk_widget_show_all (dialog);
+
+  /* Run dialog and check for valid response. */
+  if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK)
+  {
+    /* Combo box uses same model as treeview, so we can get the iter to the
+     * item that is currently selected and use it to create a new visit as
+     * a child. */
+    gtk_combo_box_get_active_iter (GTK_COMBO_BOX (combo_name), &iter);
+    price = gtk_spin_button_get_value (GTK_SPIN_BUTTON (spinbutton_price));
+    quality = gtk_spin_button_get_value (GTK_SPIN_BUTTON (spinbutton_quality));
+
+    /* Must have paid money for our meal. */
+    if (price == 0.0)
+    {
+      g_debug ("Price of zero");
+      gtk_widget_destroy (dialog);
+      return;
+    }
+
+    /* Convert eating place iter into a path so that it remains valid, even
+     * after addition of a new visit. */
+    path = gtk_tree_model_get_path (model, &iter);
+    gtk_tree_store_append (GTK_TREE_STORE (model), &child, &iter);
+    gtk_tree_store_set (GTK_TREE_STORE (model), &child, PRICE_COLUMN, price, QUALITY_COLUMN, quality, -1);
+
+    /* Average quality and price, and add to place. */
+    gtk_tree_path_free (path);
+  }
+
+  gtk_widget_destroy (dialog);
 }
 
 /* Callback function to remove a visit to an eating place from the treestore. */
