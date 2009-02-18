@@ -46,6 +46,7 @@ typedef struct
 static gchar *get_system_file (const gchar *filename);
 static gboolean init_main_window (MainWindowData *data);
 static void init_add_place_dialog (MainWindowData *user_data);
+static void hide_add_place_dialog(MainWindowData *user_data);
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data);
 static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model);
 
@@ -251,6 +252,17 @@ static void init_add_place_dialog (MainWindowData *user_data)
   g_signal_connect (user_data->add_place_dialog, "response", G_CALLBACK (add_place_action_response), user_data);
 }
 
+/* Hide the dialog to add an eating place. */
+static void hide_add_place_dialog(MainWindowData *user_data)
+{
+  if (GTK_WIDGET_VISIBLE (user_data->add_place_dialog))
+  {
+    gtk_entry_set_text (GTK_ENTRY (user_data->add_place_dialog_entry), "");
+    gtk_combo_box_set_active (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), 0);
+    gtk_widget_hide_all (user_data->add_place_dialog);
+  }
+}
+
 /* GtkTreeCellDataFunction to display a float as a currency. */
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data)
 {
@@ -309,11 +321,12 @@ static void quit_file_action (GtkWidget *widget, MainWindowData *user_data)
   gtk_main_quit ();
 }
 
-/* Callback function to show the add_place dialog only once. */
+/* Callback function to show the add_place dialog, but only once. */
 static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
   if (!GTK_WIDGET_VISIBLE (user_data->add_place_dialog))
   {
+    gtk_dialog_set_default_response (GTK_DIALOG (user_data->add_place_dialog), GTK_RESPONSE_OK);
     gtk_widget_show_all (user_data->add_place_dialog);
   }
 }
@@ -339,7 +352,7 @@ static void add_place_action_response (GtkWidget *widget, gint response_id, Main
         g_debug ("Empty place name");
         g_free (style);
 
-        gtk_widget_hide_all (user_data->add_place_dialog);
+        hide_add_place_dialog (user_data);
         return;
       }
 
@@ -354,7 +367,7 @@ static void add_place_action_response (GtkWidget *widget, gint response_id, Main
           if (g_ascii_strcasecmp (name, name_model) == 0)
           {
             g_free (name_model);
-            gtk_widget_hide_all (user_data->add_place_dialog);
+            hide_add_place_dialog (user_data);
             g_debug ("Name already exists in model.");
             return;
           }
@@ -369,13 +382,13 @@ static void add_place_action_response (GtkWidget *widget, gint response_id, Main
       g_free (style);
       break;
     case GTK_RESPONSE_CANCEL: case GTK_RESPONSE_DELETE_EVENT:
-      gtk_widget_hide_all (user_data->add_place_dialog);
+      hide_add_place_dialog (user_data);
       break;
     default:
       g_return_if_reached();
       break;
   }
-  gtk_widget_hide_all (user_data->add_place_dialog);
+  hide_add_place_dialog (user_data);
 }
 
 /* Callback function to delete an eating place. */
@@ -398,18 +411,21 @@ static void remove_place_action (GtkWidget *widget, MainWindowData *user_data)
   no_children = rows;
   while (no_children != NULL)
   {
-    /* Only remove if depth > 0. */
+    /* Only remove if depth > 1. */
     if (gtk_tree_path_get_depth ( (GtkTreePath*) no_children->data) > 1)
     {
-      gtk_tree_path_free (no_children->data);
+      gtk_tree_path_free ((GtkTreePath*) no_children->data);
       no_children = g_list_remove (no_children, no_children->data);
+      rows = no_children;
       if (no_children != NULL)
       {
         no_children = no_children->next;
       }
     }
-
-    no_children = no_children->next;
+    else
+    {
+      no_children = no_children->next;
+    }
   }
 
   /* Create GtkTreeRowReference for each of the selected rows. */

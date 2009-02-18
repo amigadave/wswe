@@ -1,5 +1,16 @@
 2009-02-18  David King  <davidk@openismus.com>
 
+	* src/wswe.c (hide_add_place_dialog): Add function to hide the add
+	a new eating place dialog.
+	  (add_place_action): Set default response for the dialog so that
+	after hiding, the default button is not lost.
+	  (add_place_action_response): Replace hide calls with calls to
+	hide_add_place_dialog().
+	  (remove_place_action): Fix segfault, forgot to cast pointer to
+	a GtkTreePath pointer.
+
+2009-02-18  David King  <davidk@openismus.com>
+
 	* src/wswe.c MainWindowData: Add add_place_dialog,
 	add_place_dialog_combobox and add_place_dialog_entry widgets
 	to typedef'd struct.
