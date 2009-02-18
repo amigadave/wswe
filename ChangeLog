@@ -1,3 +1,15 @@
+2009-02-18  David King  <davidk@openismus.com>
+
+	* src/wswe.c MainWindowData: Add add_place_dialog,
+	add_place_dialog_combobox and add_place_dialog_entry widgets
+	to typedef'd struct.
+	  (init_main_window): Initialise add_place_dialog.
+	  (init_add_place_dialog): Move dialog initialisation code to
+	separate function, stop dialog from being modal.
+	  (add_place_action): Only show the add_place dialog once.
+	  (add_place_action_response): New function to process response
+	  from add_place dialog.
+
 2009-02-17  David King  <davidk@openismus.com>
 
 	* src/wswe.c entries: Make const.

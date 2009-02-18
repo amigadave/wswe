@@ -37,11 +37,15 @@ typedef struct
 {
   GtkWidget *window;
   GtkWidget *treeview;
+  GtkWidget *add_place_dialog;
+  GtkWidget *add_place_dialog_entry;
+  GtkWidget *add_place_dialog_combobox;
 } MainWindowData;
 
 /* Function prototypes. */
 static gchar *get_system_file (const gchar *filename);
 static gboolean init_main_window (MainWindowData *data);
+static void init_add_place_dialog (MainWindowData *user_data);
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data);
 static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model);
 
@@ -50,6 +54,7 @@ static gboolean open_file_action (GtkWidget *widget, MainWindowData *user_data);
 static gboolean save_file_action (GtkWidget *widget, MainWindowData *user_data);
 static void quit_file_action (GtkWidget *widget, MainWindowData *user_data);
 static void add_place_action (GtkWidget *widget, MainWindowData *user_data);
+static void add_place_action_response (GtkWidget *widget, gint response_id, MainWindowData *user_data);
 static void remove_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void add_visit_action (GtkWidget *widget, MainWindowData *user_data);
 static void remove_visit_action (GtkWidget *widget, MainWindowData *user_data);
@@ -190,8 +195,60 @@ static gboolean init_main_window (MainWindowData *data)
   gtk_container_add (GTK_CONTAINER (data->window), vbox);
   gtk_widget_show_all (data->window);
 
+  /* Initialise dialogs. */
+  init_add_place_dialog (data);
+
   /* Successful initialisation. */
   return TRUE;
+}
+
+/* Function to initialise a dialog to add an eating place. */
+static void init_add_place_dialog (MainWindowData *user_data)
+{
+  GtkWidget *table;
+  GtkWidget *label_name;
+  GtkWidget *label_style;
+
+  /* Create a new dialog, with stock buttons ans responses. */
+  user_data->add_place_dialog = gtk_dialog_new_with_buttons ("Add an eating place", GTK_WINDOW (user_data->window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_ADD, GTK_RESPONSE_OK, NULL);
+
+  /* Setup entry field for name. */
+  user_data->add_place_dialog_entry = gtk_entry_new ();
+  gtk_widget_set_tooltip_text (user_data->add_place_dialog_entry, "Name of eating place");
+  gtk_entry_set_activates_default (GTK_ENTRY (user_data->add_place_dialog_entry), TRUE);
+  gtk_dialog_set_default_response (GTK_DIALOG (user_data->add_place_dialog), GTK_RESPONSE_OK);
+
+  /* Setup ComboBoxEntryText with list of styles. Default to first item. */
+  user_data->add_place_dialog_combobox = gtk_combo_box_new_text ();
+  gtk_widget_set_tooltip_text (user_data->add_place_dialog_combobox, "Style of eating place");
+  gtk_combo_box_append_text (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), "Asian");
+  gtk_combo_box_append_text (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), "Indian");
+  gtk_combo_box_append_text (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), "Italian");
+  gtk_combo_box_append_text (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), "Turkish");
+  gtk_combo_box_append_text (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), "Vietnamese");
+  gtk_combo_box_set_active (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), 0);
+
+  /* Setup labels, with mnemonics and tooltips. */
+  label_name = gtk_label_new_with_mnemonic ("_Name");
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label_name), user_data->add_place_dialog_entry);
+  gtk_misc_set_alignment (GTK_MISC (label_name), 0, 0.5);
+  label_style = gtk_label_new_with_mnemonic ("_Style");
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label_style), user_data->add_place_dialog_combobox);
+  gtk_misc_set_alignment (GTK_MISC (label_style), 0, 0.5);
+
+  /* Setup and pack table with widgets. */
+  table = gtk_table_new (2, 2, FALSE);
+  gtk_table_set_row_spacings (GTK_TABLE (table), 6);
+  gtk_table_set_col_spacings (GTK_TABLE (table), 6);
+  gtk_container_set_border_width (GTK_CONTAINER (table), 6);
+  gtk_table_attach_defaults (GTK_TABLE (table), label_name, 0, 1, 0, 1);
+  gtk_table_attach_defaults (GTK_TABLE (table), label_style, 0, 1, 1, 2);
+  gtk_table_attach_defaults (GTK_TABLE (table), user_data->add_place_dialog_entry, 1, 2, 0, 1);
+  gtk_table_attach_defaults (GTK_TABLE (table), user_data->add_place_dialog_combobox, 1, 2, 1, 2);
+
+  /* Pack table into dialog's vbox. Connect signals and show dialog. */
+  gtk_box_pack_start ( GTK_BOX (gtk_dialog_get_content_area (GTK_DIALOG (user_data->add_place_dialog))), table, TRUE, FALSE, 0);
+  g_signal_connect (user_data->add_place_dialog, "response", G_CALLBACK (add_place_action_response), user_data);
 }
 
 /* GtkTreeCellDataFunction to display a float as a currency. */
@@ -252,106 +309,73 @@ static void quit_file_action (GtkWidget *widget, MainWindowData *user_data)
   gtk_main_quit ();
 }
 
-/* Callback function to add an eating place. */
+/* Callback function to show the add_place dialog only once. */
 static void add_place_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  GtkWidget *dialog;
-  GtkWidget *table;
-  GtkWidget *entry;
-  GtkWidget *combobox;
-  GtkWidget *label_name;
-  GtkWidget *label_style;
+  if (!GTK_WIDGET_VISIBLE (user_data->add_place_dialog))
+  {
+    gtk_widget_show_all (user_data->add_place_dialog);
+  }
+}
+
+/* Callback function to check response id of add_place dialog. */
+static void add_place_action_response (GtkWidget *widget, gint response_id, MainWindowData *user_data)
+{
   const gchar *name;
   gchar *style;
   gchar *name_model;
   GtkTreeModel *model;
   GtkTreeIter iter = { 0, };
 
-  /* Create a new dialog, with stock buttons ans responses. */
-  dialog = gtk_dialog_new_with_buttons ("Add an eating place", GTK_WINDOW (user_data->window), GTK_DIALOG_MODAL, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_ADD, GTK_RESPONSE_OK, NULL);
-
-  /* Setup entry field for name. */
-  entry = gtk_entry_new ();
-  gtk_widget_set_tooltip_text (entry, "Name of eating place");
-  gtk_entry_set_activates_default (GTK_ENTRY (entry), TRUE);
-  gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
-
-  /* Setup ComboBoxEntryText with list of styles. Default to first item. */
-  combobox = gtk_combo_box_new_text ();
-  gtk_widget_set_tooltip_text (combobox, "Style of eating place");
-  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox), "Asian");
-  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox), "Indian");
-  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox), "Italian");
-  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox), "Turkish");
-  gtk_combo_box_append_text (GTK_COMBO_BOX (combobox), "Vietnamese");
-  gtk_combo_box_set_active (GTK_COMBO_BOX (combobox), 0);
-
-  /* Setup labels, with mnemonics and tooltips. */
-  label_name = gtk_label_new_with_mnemonic ("_Name");
-  gtk_label_set_mnemonic_widget (GTK_LABEL (label_name), entry);
-  gtk_misc_set_alignment (GTK_MISC (label_name), 0, 0.5);
-  label_style = gtk_label_new_with_mnemonic ("_Style");
-  gtk_label_set_mnemonic_widget (GTK_LABEL (label_style), combobox);
-  gtk_misc_set_alignment (GTK_MISC (label_style), 0, 0.5);
-
-  /* Setup and pack table with widgets. */
-  table = gtk_table_new (2, 2, FALSE);
-  gtk_table_set_row_spacings (GTK_TABLE (table), 6);
-  gtk_table_set_col_spacings (GTK_TABLE (table), 6);
-  gtk_container_set_border_width (GTK_CONTAINER (table), 6);
-  gtk_table_attach_defaults (GTK_TABLE (table), label_name, 0, 1, 0, 1);
-  gtk_table_attach_defaults (GTK_TABLE (table), label_style, 0, 1, 1, 2);
-  gtk_table_attach_defaults (GTK_TABLE (table), entry, 1, 2, 0, 1);
-  gtk_table_attach_defaults (GTK_TABLE (table), combobox, 1, 2, 1, 2);
-
-  /* Pack table into dialog's vbox. GTK_DIALOG cast needed as GtkWidget does
-   * not have a member "vbox". */
-  gtk_box_pack_start ( GTK_BOX (gtk_dialog_get_content_area (GTK_DIALOG (dialog))), table, TRUE, FALSE, 0);
-  gtk_widget_show_all (dialog);
-
-  /* Run dialog and check for valid response. */
-  if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK)
+  switch (response_id)
   {
-    name = gtk_entry_get_text (GTK_ENTRY (entry));
-    style = gtk_combo_box_get_active_text (GTK_COMBO_BOX (combobox));
+    case GTK_RESPONSE_OK:
+      name = gtk_entry_get_text (GTK_ENTRY (user_data->add_place_dialog_entry));
+      style = gtk_combo_box_get_active_text (GTK_COMBO_BOX (user_data->add_place_dialog_combobox));
 
-    if (name[0] == '\0')
-    {
-      g_debug ("Empty place name");
-      gtk_widget_destroy (dialog);
-
-      g_free (style);
-      return;
-    }
-
-    /* Check model for eating place that already exists. */
-    model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
-    if (gtk_tree_model_get_iter_first (model, &iter))
-    {
-
-      do
+      /* Don't add an empty place name to the treestore. */
+      if (name[0] == '\0')
       {
-        gtk_tree_model_get (model, &iter, NAME_COLUMN, &name_model, -1);
-      
-        if (g_ascii_strcasecmp (name, name_model) == 0)
+        g_debug ("Empty place name");
+        g_free (style);
+
+        gtk_widget_hide_all (user_data->add_place_dialog);
+        return;
+      }
+
+      /* Check model for eating place that already exists. */
+      model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
+      if (gtk_tree_model_get_iter_first (model, &iter))
+      {
+        do
         {
+          gtk_tree_model_get (model, &iter, NAME_COLUMN, &name_model, -1);
+
+          if (g_ascii_strcasecmp (name, name_model) == 0)
+          {
+            g_free (name_model);
+            gtk_widget_hide_all (user_data->add_place_dialog);
+            g_debug ("Name already exists in model.");
+            return;
+          }
+
           g_free (name_model);
-          gtk_widget_destroy (dialog);
-          g_debug ("Name already exists in model.");
-          return;
-        }
+        } while (gtk_tree_model_iter_next (model, &iter));
+      }
 
-        g_free (name_model);
-      } while (gtk_tree_model_iter_next (model, &iter));
-    }
-
-    /* Append new place to end of treestore. */
-    gtk_tree_store_append (GTK_TREE_STORE (model), &iter, NULL);
-    gtk_tree_store_set (GTK_TREE_STORE (model), &iter, NAME_COLUMN, name, STYLE_COLUMN, style, -1);
-    g_free (style);
+      /* Append new place to end of treestore. */
+      gtk_tree_store_append (GTK_TREE_STORE (model), &iter, NULL);
+      gtk_tree_store_set (GTK_TREE_STORE (model), &iter, NAME_COLUMN, name, STYLE_COLUMN, style, -1);
+      g_free (style);
+      break;
+    case GTK_RESPONSE_CANCEL: case GTK_RESPONSE_DELETE_EVENT:
+      gtk_widget_hide_all (user_data->add_place_dialog);
+      break;
+    default:
+      g_return_if_reached();
+      break;
   }
-
-  gtk_widget_destroy (dialog);
+  gtk_widget_hide_all (user_data->add_place_dialog);
 }
 
 /* Callback function to delete an eating place. */
