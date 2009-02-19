@@ -53,6 +53,7 @@ static gboolean init_main_window (MainWindowData *data);
 static void init_add_place_dialog (MainWindowData *user_data);
 static void hide_add_place_dialog(MainWindowData *user_data);
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data);
+static void name_column_edited (GtkCellRendererText *cell, gchar *path_string, gchar *new_string, MainWindowData *user_data);
 static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model);
 static gint sort_place_name (GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
 
@@ -148,7 +149,6 @@ static gboolean init_main_window (MainWindowData *data)
     g_error_free (ui_error);
     return FALSE;
   }
-  g_debug ("GtkUIManager file for main window loaded");
 
   /* Menu and toolbar setup. */
   menubar = gtk_ui_manager_get_widget (ui_manager, "/MainMenu");
@@ -161,7 +161,9 @@ static gboolean init_main_window (MainWindowData *data)
   data->treeview = gtk_tree_view_new_with_model (GTK_TREE_MODEL (treestore));
   g_object_unref (treestore);
   text_renderer = gtk_cell_renderer_text_new ();
+  g_object_set (text_renderer, "editable", TRUE, NULL);
   name_column = gtk_tree_view_column_new_with_attributes ("Name", text_renderer, "text", NAME_COLUMN, NULL);
+  g_signal_connect (text_renderer, "edited", (GCallback) name_column_edited, data);
   gtk_tree_view_column_set_sort_column_id (name_column, NAME_SORTID);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), name_column, NAME_COLUMN);
   text_renderer = gtk_cell_renderer_text_new ();
@@ -270,6 +272,23 @@ static void hide_add_place_dialog(MainWindowData *user_data)
     gtk_entry_set_text (GTK_ENTRY (user_data->add_place_dialog_entry), "");
     gtk_combo_box_set_active (GTK_COMBO_BOX (user_data->add_place_dialog_combobox), 0);
     gtk_widget_hide_all (user_data->add_place_dialog);
+  }
+}
+
+/* Callback function for Name column to be edited. */
+static void name_column_edited (GtkCellRendererText *cell, gchar *path_string, gchar *new_string, MainWindowData *user_data)
+{
+  GtkTreeIter iter;
+  GtkTreeModel *model;
+
+  model = gtk_tree_view_get_model( GTK_TREE_VIEW (user_data->treeview));
+
+  if (gtk_tree_model_get_iter_from_string (model, &iter, path_string))
+  {
+    if (new_string != NULL)
+    {
+      gtk_tree_store_set (GTK_TREE_STORE (model), &iter, NAME_COLUMN, new_string, -1);
+    }
   }
 }
 

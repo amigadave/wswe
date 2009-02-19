@@ -1,5 +1,12 @@
 2009-02-19  David King  <davidk@openismus.com>
 
+	* src/wswe.c (init_main_window): Set editable property of
+	name_column to TRUE.
+	  (name_column_edited): New callback function to store an edited
+	value to the name column.
+
+2009-02-19  David King  <davidk@openismus.com>
+
 	* src/wswe.c NAME_SORTID: New anonymous enum for column sort ids.
 	  (init_main_window): Setup sortable Name column.
 	  (sort_place_name): New function to compare two strings for sorting
