@@ -32,6 +32,11 @@ enum
   N_COLUMNS
 };
 
+enum
+{
+  NAME_SORTID
+};
+
 /* Variables that need to be accessed across several functions. */
 typedef struct
 {
@@ -49,6 +54,7 @@ static void init_add_place_dialog (MainWindowData *user_data);
 static void hide_add_place_dialog(MainWindowData *user_data);
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data);
 static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model);
+static gint sort_place_name (GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
 
 /* Callbacks for menu and toolbar. */
 static gboolean open_file_action (GtkWidget *widget, MainWindowData *user_data);
@@ -119,6 +125,7 @@ static gboolean init_main_window (MainWindowData *data)
   GtkWidget *scrollwin;
   GtkWidget *vbox;
   GtkTreeStore *treestore;
+  GtkTreeSortable *sortable;
   GtkTreeViewColumn *name_column;
   GtkTreeViewColumn *style_column;
   GtkTreeViewColumn *price_column;
@@ -149,10 +156,13 @@ static gboolean init_main_window (MainWindowData *data)
 
   /* Setup treestore and treeview. */
   treestore = gtk_tree_store_new (N_COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_UINT);
+  sortable = GTK_TREE_SORTABLE (treestore);
+  gtk_tree_sortable_set_sort_func (sortable, NAME_SORTID, sort_place_name, data, NULL);
   data->treeview = gtk_tree_view_new_with_model (GTK_TREE_MODEL (treestore));
   g_object_unref (treestore);
   text_renderer = gtk_cell_renderer_text_new ();
   name_column = gtk_tree_view_column_new_with_attributes ("Name", text_renderer, "text", NAME_COLUMN, NULL);
+  gtk_tree_view_column_set_sort_column_id (name_column, NAME_SORTID);
   gtk_tree_view_insert_column (GTK_TREE_VIEW (data->treeview), name_column, NAME_COLUMN);
   text_renderer = gtk_cell_renderer_text_new ();
   style_column = gtk_tree_view_column_new_with_attributes ("Style", text_renderer, "text", STYLE_COLUMN, NULL);
@@ -295,6 +305,38 @@ static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model)
   gtk_tree_model_get_iter (model, &iter, path);
   gtk_tree_store_remove (GTK_TREE_STORE (model), &iter);
   gtk_tree_path_free (path);
+}
+
+/* Function to sort columns in the treeview. */
+static gint sort_place_name (GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data)
+{
+  gchar *name1;
+  gchar *name2;
+  gint sortval = 0;
+
+  gtk_tree_model_get (model, a, NAME_COLUMN, &name1, -1);
+  gtk_tree_model_get (model, b, NAME_COLUMN, &name2, -1);
+
+  if (name1 == NULL || name2 == NULL)
+  {
+    if (name1 == NULL && name2 == NULL)
+    {
+      g_free (name1);
+      g_free (name2);
+      return sortval;
+    }
+
+    sortval = (name1 == NULL) ? -1 : 1;
+  }
+  else
+  {
+    sortval = g_utf8_collate (name1, name2);
+  }
+
+  g_free (name1);
+  g_free (name2);
+
+  return sortval;
 }
 
 /* Callback function to open a data file. */

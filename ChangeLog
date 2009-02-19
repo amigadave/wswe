@@ -1,3 +1,10 @@
+2009-02-19  David King  <davidk@openismus.com>
+
+	* src/wswe.c NAME_SORTID: New anonymous enum for column sort ids.
+	  (init_main_window): Setup sortable Name column.
+	  (sort_place_name): New function to compare two strings for sorting
+	place names.
+
 2009-02-18  David King  <davidk@openismus.com>
 
 	* src/wswe.c (hide_add_place_dialog): Add function to hide the add
