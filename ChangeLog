@@ -1,3 +1,19 @@
+2009-02-20  David King  <davidk@openismus.com>
+
+	* src/wswe.c (init_main_window): Don't connect to gtk_main_quit()
+	in destroy signal handler, but to quit_file_action() instead.
+	  (init_add_place_dialog): Connect to delete-event of dialog to
+	prevent destruction of dialog on delete event emission. Thanks
+	to Daniel.
+	  (only_toplevel_visible): New function to show only toplevel
+	rows in the add_visit_dialog combobox.
+	  (add_place_delete_event): New callback function for delete-event
+	of add_place_dialog.
+	  (add_visit_action): Use a TreeModelFilter to only show the
+	toplevel rows in the add_visit dialog.
+	  (remove_visit_action): Make the callback only remove visits to
+	eating places, not toplevel places.
+
 2009-02-19  David King  <davidk@openismus.com>
 
 	* src/wswe.c (init_main_window): Set editable property of

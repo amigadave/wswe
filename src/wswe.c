@@ -54,6 +54,7 @@ static void init_add_place_dialog (MainWindowData *user_data);
 static void hide_add_place_dialog(MainWindowData *user_data);
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data);
 static void name_column_edited (GtkCellRendererText *cell, gchar *path_string, gchar *new_string, MainWindowData *user_data);
+static gboolean only_toplevel_visible (GtkTreeModel *model, GtkTreeIter *iter, MainWindowData *user_data);
 static void remove_row (GtkTreeRowReference *ref, GtkTreeModel *model);
 static gint sort_place_name (GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer user_data);
 
@@ -63,6 +64,7 @@ static gboolean save_file_action (GtkWidget *widget, MainWindowData *user_data);
 static void quit_file_action (GtkWidget *widget, MainWindowData *user_data);
 static void add_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void add_place_action_response (GtkWidget *widget, gint response_id, MainWindowData *user_data);
+static gboolean add_place_delete_event (GtkWidget *widget, MainWindowData *user_data);
 static void remove_place_action (GtkWidget *widget, MainWindowData *user_data);
 static void add_visit_action (GtkWidget *widget, MainWindowData *user_data);
 static void remove_visit_action (GtkWidget *widget, MainWindowData *user_data);
@@ -202,7 +204,7 @@ static gboolean init_main_window (MainWindowData *data)
   g_object_unref (ui_manager);
 
   /* Make destroy event end program. */
-  g_signal_connect (G_OBJECT (data->window), "destroy", G_CALLBACK (gtk_main_quit), NULL);
+  g_signal_connect (G_OBJECT (data->window), "destroy", G_CALLBACK (quit_file_action), NULL);
 
   /* Show main window and all child widgets. */
   gtk_container_add (GTK_CONTAINER (data->window), vbox);
@@ -261,7 +263,8 @@ static void init_add_place_dialog (MainWindowData *user_data)
 
   /* Pack table into dialog's vbox. Connect signals and show dialog. */
   gtk_box_pack_start ( GTK_BOX (gtk_dialog_get_content_area (GTK_DIALOG (user_data->add_place_dialog))), table, TRUE, FALSE, 0);
-  g_signal_connect (user_data->add_place_dialog, "response", G_CALLBACK (add_place_action_response), user_data);
+  g_signal_connect (G_OBJECT (user_data->add_place_dialog), "response", G_CALLBACK (add_place_action_response), user_data);
+  g_signal_connect (G_OBJECT (user_data->add_place_dialog), "delete-event", G_CALLBACK (add_place_delete_event), user_data);
 }
 
 /* Hide the dialog to add an eating place. */
@@ -289,6 +292,21 @@ static void name_column_edited (GtkCellRendererText *cell, gchar *path_string, g
     {
       gtk_tree_store_set (GTK_TREE_STORE (model), &iter, NAME_COLUMN, new_string, -1);
     }
+  }
+}
+
+/* GtkTreeModelFilterVisibleFunc to only show toplevel rows in the treestore. */
+static gboolean only_toplevel_visible (GtkTreeModel *model, GtkTreeIter *iter, MainWindowData *user_data)
+{
+  GtkTreeIter parent;
+
+  if (gtk_tree_model_iter_parent (model, &parent, iter))
+  {
+    return FALSE;
+  }
+  else
+  {
+    return TRUE;
   }
 }
 
@@ -377,8 +395,6 @@ static gboolean save_file_action (GtkWidget *widget, MainWindowData *user_data)
 /* Callback function to quit program. */
 static void quit_file_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  g_debug ("Quit program");
-
   gtk_main_quit ();
 }
 
@@ -450,6 +466,13 @@ static void add_place_action_response (GtkWidget *widget, gint response_id, Main
       break;
   }
   hide_add_place_dialog (user_data);
+}
+
+/* Callback function to prevent dialog from being deleted. */
+static gboolean add_place_delete_event(GtkWidget *widget, MainWindowData *user_data)
+{
+  /* Don't let GTK+ destroy the dialog. */
+  return TRUE;
 }
 
 /* Callback function to delete an eating place. */
@@ -524,17 +547,23 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
   gdouble price = 0.0;
   gdouble quality = 0.0;
   GtkTreeModel *model;
+  GtkTreeModel *model_only_toplevel;
   GtkTreeIter iter = { 0, };
   GtkTreeIter child = { 0, };
   GtkTreePath *path;
 
-  /* Create a new dialog, with stock buttons ans responses. */
+  /* Create a new dialog, with stock buttons and responses. */
   dialog = gtk_dialog_new_with_buttons ("Add a visit to an eating place", GTK_WINDOW (user_data->window), GTK_DIALOG_MODAL, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_ADD, GTK_RESPONSE_OK, NULL);
   gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
 
-  /* Setup ComboBox to select names from model. */
+  /* Setup new treemodel to filter out child rows. */
   model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
-  combo_name = gtk_combo_box_new_with_model (model);
+  model_only_toplevel = gtk_tree_model_filter_new (model, NULL);
+  g_object_unref (model);
+  gtk_tree_model_filter_set_visible_func (GTK_TREE_MODEL_FILTER (model_only_toplevel), (GtkTreeModelFilterVisibleFunc) only_toplevel_visible, user_data, NULL);
+
+  /* Setup ComboBox to select names from model. */
+  combo_name = gtk_combo_box_new_with_model (model_only_toplevel);
   text_renderer = gtk_cell_renderer_text_new ();
   gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (combo_name), text_renderer, FALSE);
   gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (combo_name), text_renderer, "text", NAME_COLUMN, NULL);
@@ -594,9 +623,9 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
 
     /* Convert eating place iter into a path so that it remains valid, even
      * after addition of a new visit. */
-    path = gtk_tree_model_get_path (model, &iter);
-    gtk_tree_store_append (GTK_TREE_STORE (model), &child, &iter);
-    gtk_tree_store_set (GTK_TREE_STORE (model), &child, PRICE_COLUMN, price, QUALITY_COLUMN, quality, -1);
+    path = gtk_tree_model_get_path (model_only_toplevel, &iter);
+    gtk_tree_store_append (GTK_TREE_STORE (model_only_toplevel), &child, &iter);
+    gtk_tree_store_set (GTK_TREE_STORE (model_only_toplevel), &child, PRICE_COLUMN, price, QUALITY_COLUMN, quality, -1);
 
     /* Average quality and price, and add to place. */
     gtk_tree_path_free (path);
@@ -608,7 +637,59 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
 /* Callback function to remove a visit to an eating place from the treestore. */
 static void remove_visit_action (GtkWidget *widget, MainWindowData *user_data)
 {
-  g_debug ("Remove a visit to an eating place");
+  GtkTreeSelection *selection;
+  GtkTreeRowReference *ref;
+  GtkTreeModel *model;
+  GList *rows = NULL;
+  GList *no_toplevel = NULL;
+  GList *path_to_ref = NULL;
+  GList *treerowref = NULL;
+
+  /* Get GList of selected rows from treeview. */
+  selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (user_data->treeview));
+  model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
+  rows = gtk_tree_selection_get_selected_rows (selection, &model);
+
+  /* Remove child paths (visits) from list. */
+  no_toplevel = rows;
+  while (no_toplevel != NULL)
+  {
+    /* Only remove if depth is 1, i.e. a toplevel item (eating place). */
+    if (gtk_tree_path_get_depth ( (GtkTreePath*) no_toplevel->data) == 1)
+    {
+      gtk_tree_path_free ((GtkTreePath*) no_toplevel->data);
+      no_toplevel = g_list_remove (no_toplevel, no_toplevel->data);
+      /* Set rows pointer to new start of list. */
+      rows = no_toplevel;
+      if (no_toplevel != NULL)
+      {
+        no_toplevel = no_toplevel->next;
+      }
+    }
+    else
+    {
+      no_toplevel = no_toplevel->next;
+    }
+  }
+
+  /* Create GtkTreeRowReference for each of the selected rows. */
+  path_to_ref = rows;
+  while (path_to_ref != NULL)
+  {
+    ref = gtk_tree_row_reference_new (model, (GtkTreePath*) path_to_ref->data);
+    treerowref = g_list_prepend (treerowref, gtk_tree_row_reference_copy (ref));
+    gtk_tree_row_reference_free (ref);
+    path_to_ref = path_to_ref->next;
+  }
+
+  /* Remove selected rows from model. */
+  g_list_foreach (treerowref, (GFunc) remove_row, model);
+
+  /* Free treerowref, paths and lists. */
+  g_list_foreach (treerowref, (GFunc) gtk_tree_row_reference_free, NULL);
+  g_list_foreach (rows, (GFunc) gtk_tree_path_free, NULL);
+  g_list_free (treerowref);
+  g_list_free (rows);
 }
 
 /* Callback function to randomly select an eating place. */
