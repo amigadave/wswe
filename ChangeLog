@@ -1,5 +1,10 @@
 2009-02-20  David King  <davidk@openismus.com>
 
+	* src/wswe.c (add_visit_action): Add to correct treestore,
+	fixingadding of visits.
+
+2009-02-20  David King  <davidk@openismus.com>
+
 	* src/wswe.c (init_main_window): Don't connect to gtk_main_quit()
 	in destroy signal handler, but to quit_file_action() instead.
 	  (init_add_place_dialog): Connect to delete-event of dialog to

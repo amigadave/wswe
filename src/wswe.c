@@ -551,6 +551,7 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
   GtkTreeIter iter = { 0, };
   GtkTreeIter child = { 0, };
   GtkTreePath *path;
+  GtkTreePath *child_path;
 
   /* Create a new dialog, with stock buttons and responses. */
   dialog = gtk_dialog_new_with_buttons ("Add a visit to an eating place", GTK_WINDOW (user_data->window), GTK_DIALOG_MODAL, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_ADD, GTK_RESPONSE_OK, NULL);
@@ -559,7 +560,6 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
   /* Setup new treemodel to filter out child rows. */
   model = gtk_tree_view_get_model (GTK_TREE_VIEW (user_data->treeview));
   model_only_toplevel = gtk_tree_model_filter_new (model, NULL);
-  g_object_unref (model);
   gtk_tree_model_filter_set_visible_func (GTK_TREE_MODEL_FILTER (model_only_toplevel), (GtkTreeModelFilterVisibleFunc) only_toplevel_visible, user_data, NULL);
 
   /* Setup ComboBox to select names from model. */
@@ -624,8 +624,10 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
     /* Convert eating place iter into a path so that it remains valid, even
      * after addition of a new visit. */
     path = gtk_tree_model_get_path (model_only_toplevel, &iter);
-    gtk_tree_store_append (GTK_TREE_STORE (model_only_toplevel), &child, &iter);
-    gtk_tree_store_set (GTK_TREE_STORE (model_only_toplevel), &child, PRICE_COLUMN, price, QUALITY_COLUMN, quality, -1);
+    child_path = gtk_tree_model_filter_convert_path_to_child_path (GTK_TREE_MODEL_FILTER (model_only_toplevel), path);
+    gtk_tree_model_get_iter (model, &iter, child_path);
+    gtk_tree_store_append (GTK_TREE_STORE (model), &child, &iter);
+    gtk_tree_store_set (GTK_TREE_STORE (model), &child, PRICE_COLUMN, price, QUALITY_COLUMN, quality, -1);
 
     /* Average quality and price, and add to place. */
     gtk_tree_path_free (path);
