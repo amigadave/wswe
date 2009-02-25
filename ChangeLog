@@ -1,3 +1,13 @@
+2009-02-25  David King  <davidk@openismus.com>
+
+	* src/wswe.c (init_main_window): Change Quality column to guint.
+	  (name_column_edited, only_toplevel_visible): Initialise iter to 0.
+	  (price_cell_data_func): Initialise price to 0.
+	  (add_visit_action): Change quality to guint. Initialise TreePaths
+	to NULL. Check for empty treemodel, and do not display dialog in
+	this case. Change comment to be less confusing. All pointed out
+	by Murray.
+
 2009-02-20  David King  <davidk@openismus.com>
 
 	* src/wswe.c (add_visit_action): Add to correct treestore,

@@ -157,7 +157,7 @@ static gboolean init_main_window (MainWindowData *data)
   toolbar = gtk_ui_manager_get_widget (ui_manager, "/MainToolbar");
 
   /* Setup treestore and treeview. */
-  treestore = gtk_tree_store_new (N_COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_UINT);
+  treestore = gtk_tree_store_new (N_COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_UINT, G_TYPE_UINT);
   sortable = GTK_TREE_SORTABLE (treestore);
   gtk_tree_sortable_set_sort_func (sortable, NAME_SORTID, sort_place_name, data, NULL);
   data->treeview = gtk_tree_view_new_with_model (GTK_TREE_MODEL (treestore));
@@ -281,7 +281,7 @@ static void hide_add_place_dialog(MainWindowData *user_data)
 /* Callback function for Name column to be edited. */
 static void name_column_edited (GtkCellRendererText *cell, gchar *path_string, gchar *new_string, MainWindowData *user_data)
 {
-  GtkTreeIter iter;
+  GtkTreeIter iter = { 0, };
   GtkTreeModel *model;
 
   model = gtk_tree_view_get_model( GTK_TREE_VIEW (user_data->treeview));
@@ -298,7 +298,7 @@ static void name_column_edited (GtkCellRendererText *cell, gchar *path_string, g
 /* GtkTreeModelFilterVisibleFunc to only show toplevel rows in the treestore. */
 static gboolean only_toplevel_visible (GtkTreeModel *model, GtkTreeIter *iter, MainWindowData *user_data)
 {
-  GtkTreeIter parent;
+  GtkTreeIter parent = { 0, };
 
   if (gtk_tree_model_iter_parent (model, &parent, iter))
   {
@@ -313,7 +313,7 @@ static gboolean only_toplevel_visible (GtkTreeModel *model, GtkTreeIter *iter, M
 /* GtkTreeCellDataFunction to display a float as a currency. */
 static void price_cell_data_func (GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data)
 {
-  gfloat price;
+  gfloat price = 0.0;
   gchar *price_string; /* EURxxx.xx\0 */
 
   gtk_tree_model_get (model, iter, PRICE_COLUMN, &price, -1);
@@ -545,13 +545,13 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
   GtkWidget *label_price;
   GtkWidget *label_quality;
   gdouble price = 0.0;
-  gdouble quality = 0.0;
+  guint quality = 0;
   GtkTreeModel *model;
   GtkTreeModel *model_only_toplevel;
   GtkTreeIter iter = { 0, };
   GtkTreeIter child = { 0, };
-  GtkTreePath *path;
-  GtkTreePath *child_path;
+  GtkTreePath *path = NULL;
+  GtkTreePath *child_path = NULL;
 
   /* Create a new dialog, with stock buttons and responses. */
   dialog = gtk_dialog_new_with_buttons ("Add a visit to an eating place", GTK_WINDOW (user_data->window), GTK_DIALOG_MODAL, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_ADD, GTK_RESPONSE_OK, NULL);
@@ -568,12 +568,17 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
   gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (combo_name), text_renderer, FALSE);
   gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (combo_name), text_renderer, "text", NAME_COLUMN, NULL);
   gtk_combo_box_set_active (GTK_COMBO_BOX (combo_name), 0);
+  if (!gtk_combo_box_get_active_iter (GTK_COMBO_BOX (combo_name), &iter))
+  {
+    g_debug ("No places to add visit to");
+    return;
+  }
 
   /* Setup spinbuttons for price and quality. */
   spinbutton_price = gtk_spin_button_new_with_range (0.0, 100.0, 0.01);
   gtk_widget_set_tooltip_text (spinbutton_price, "Price of meal at eating place");
-  spinbutton_quality = gtk_spin_button_new_with_range (0.0, 5.0, 1.0);
-  gtk_widget_set_tooltip_text (spinbutton_quality, "Quality of visit to eating place");
+  spinbutton_quality = gtk_spin_button_new_with_range (0.0, 100.0, 1.0);
+  gtk_widget_set_tooltip_text (spinbutton_quality, "Quality of visit to eating place, as a percentage");
 
   /* Setup labels, with mnemonics and tooltips. */
   label_name = gtk_label_new_with_mnemonic ("_Name");
@@ -629,7 +634,7 @@ static void add_visit_action (GtkWidget *widget, MainWindowData *user_data)
     gtk_tree_store_append (GTK_TREE_STORE (model), &child, &iter);
     gtk_tree_store_set (GTK_TREE_STORE (model), &child, PRICE_COLUMN, price, QUALITY_COLUMN, quality, -1);
 
-    /* Average quality and price, and add to place. */
+    /* TODO: Average quality and price, and add to place. */
     gtk_tree_path_free (path);
   }
 
